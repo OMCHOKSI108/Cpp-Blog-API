@@ -1,78 +1,77 @@
 # AI-Powered API Abuse Detection Gateway
 
-## Overview
+A high-performance C++ API Gateway that uses real-time behavioral analysis and Machine Learning to detect and block abusive traffic (bots, scrapers, DDoS) without modifying the backend.
 
-This project implements an AI-powered API abuse detection gateway using Drogon, ONNX Runtime, and C++.
+## System Architecture
 
-## Features
+![Architecture Diagram](docs/structure.png)
 
-- HTTP Reverse Proxy
-- Traffic Analysis
-- AI-based Abuse Detection
-- Real-time Metrics
-- Flexible Configuration
-- Dockerized Deployment
+The system is designed with a modular architecture:
 
-## Prerequisites
+- **Gateway Layer (src/gateway)**: Handles incoming HTTP requests and enforcement (Allow/Block).
+- **Traffic Analysis (src/analysis)**: Tracks streaming metrics (RPS, Burstiness) per client in O(1) time.
+- **ML Engine (src/ml)**: Runs inference on behavioral features to compute a Risk Score.
+- **Utils**: High-speed logging and configuration.
 
-- C++20 Compiler
-- Drogon (v1.9.0)
-- ONNX Runtime
-- CMake
-- Docker
+## Getting Started
 
-## Installation
+### Prerequisites
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/ai-abuse-detection.git
-cd ai-abuse-detection
+- **Docker** (Recommended)
+- OR: C++20 Compiler, CMake, Drogon, Spdlog, Nlohmann_json.
+
+### Running with Docker
+
+1. **Build the Image**
+   ```bash
+   docker build -t gateway .
+   ```
+
+2. **Run the Gateway**
+   ```bash
+   docker run -p 8080:8080 gateway
+   ```
+
+3. **Test It**
+   ```bash
+   # Normal request
+   curl http://localhost:8080/get
+   
+   # Simulate abuse (Fast loop)
+   for i in {1..100}; do curl http://localhost:8080/get; done
+   ```
+
+### Configuration
+
+Edit `config/config.json` to change the backend URL or ML thresholds:
+
+```json
+{
+    "gateway": {
+        "backend_url": "http://your-api.com"
+    },
+    ...
+}
 ```
 
-2. Build the project:
-```bash
-mkdir build
-cd build
-cmake ..
-make
+## Tech Stack
+
+- **C++20**: Core Logic.
+- **Drogon**: Asynchronous Web Framework (High Concurrent Connections).
+- **Spdlog**: Zero-latency logging.
+- **ONNX Runtime** (Integration ready): For ML Inference.
+- **CMake**: Build System.
+
+## Project Structure
+
 ```
-
-3. Run the gateway:
-```bash
-./ai_abuse_gateway
+├── src
+│   ├── analysis    # Sliding Window & Traffic Analyzer
+│   ├── gateway     # Reverse Proxy Logic
+│   ├── ml          # Inference Engine
+│   └── main.cpp    # Entry Point
+├── include         # Public Headers
+├── config          # JSON Configuration
+├── Dockerfile      # Multi-stage build
+└── CMakeLists.txt  # Build definitions
 ```
-
-## Configuration
-
-The configuration file is located at `config/config.json`. You can modify the following settings:
-
-- `listeners`: Define the gateway's listening address and port.
-- `app`: Configure Drogon settings (e.g., number of threads).
-- `gateway`: Set the backend URL and timeout.
-- `ml_model`: Specify the path to the ONNX model and threshold.
-
-## Usage
-
-1. Start the gateway:
-```bash
-./ai_abuse_gateway
-```
-
-2. The gateway will listen on the specified port and forward requests to the backend.
-
-## Metrics
-
-The gateway provides real-time metrics via the `/metrics` endpoint.
-
-## Docker
-
-A Dockerfile is provided for easy deployment. Build and run the container:
-
-```bash
-docker build -t ai-abuse-gateway .
-docker run -d -p 8080:8080 --name ai-abuse-gateway ai-abuse-gateway
-```
-
-## License
-
-MIT License
