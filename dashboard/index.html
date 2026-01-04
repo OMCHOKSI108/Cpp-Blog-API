@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gateway Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+            color: #111827;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+
+<body class="p-8 max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
+        <div class="flex items-center gap-3">
+            <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">G</div>
+            <div>
+                <h1 class="text-xl font-semibold text-gray-900">API Gateway Monitor</h1>
+                <p class="text-sm text-gray-500">System Status & Traffic Analysis</p>
+            </div>
+        </div>
+
+        <!-- Target Config -->
+        <div class="flex-1 mx-8">
+            <form id="configForm" class="flex gap-2">
+                <input type="url" id="targetUrl" placeholder="Enter Target Backend URL (e.g. https://api.google.com)"
+                    class="flex-1 border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 bg-white shadow-sm">
+                <button type="submit"
+                    class="bg-gray-900 text-white px-3 py-1.5 rounded-md text-sm hover:bg-gray-800">Update
+                    Target</button>
+            </form>
+            <div id="targetMsg" class="text-xs mt-1 text-green-600 hidden">Updated!</div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <span class="relative flex h-2.5 w-2.5" title="Gateway Active">
+                <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </span>
+
+            <!-- User Menu -->
+            <a href="/dashboard/profile.html" id="userMenu"
+                class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                </div>
+                <span id="displayUser">Profile</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Metrics Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="card p-5">
+            <dt class="text-sm font-medium text-gray-500 truncate">Total Requests</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900" id="stat-total-req">0</dd>
+        </div>
+        <div class="card p-5">
+            <dt class="text-sm font-medium text-gray-500 truncate">Requests / Sec</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900 text-blue-600" id="stat-rps">0.0</dd>
+        </div>
+        <div class="card p-5">
+            <dt class="text-sm font-medium text-gray-500 truncate">Active Clients</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900" id="stat-clients">0</dd>
+        </div>
+        <div class="card p-5">
+            <dt class="text-sm font-medium text-gray-500 truncate">Avg Risk Score</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900" id="stat-risk">0.00</dd>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Throughput Chart -->
+        <div class="card p-6 col-span-2">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Traffic Throughput</h3>
+            <div class="relative h-64 w-full">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Simulation & Client List -->
+        <div class="space-y-6">
+
+            <!-- Traffic Simulator -->
+            <div class="card p-6 bg-blue-50 border-blue-100">
+                <h3 class="text-lg font-medium text-gray-900 mb-2">⚡ Traffic Simulator</h3>
+                <p class="text-sm text-gray-600 mb-4">Generate artificial traffic to test detection on the target.</p>
+
+                <div class="flex gap-2">
+                    <button id="btn-sim-normal"
+                        class="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded-md text-sm font-medium hover:bg-gray-50">
+                        Normal Load
+                    </button>
+                    <button id="btn-sim-attack"
+                        class="flex-1 bg-red-600 text-white py-2 rounded-md text-sm font-medium hover:bg-red-700 shadow-sm">
+                        🚨 Attack
+                    </button>
+                </div>
+                <div id="sim-status" class="mt-2 text-xs text-gray-500 h-4"></div>
+            </div>
+
+            <!-- Client List -->
+            <div class="card overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <h3 class="text-sm font-medium text-gray-900">Top Active Clients</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Client IP</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    RPS</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Burst</th>
+                            </tr>
+                        </thead>
+                        <tbody id="client-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Professional Chart Config
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#6b7280';
+
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(37, 99, 235, 0.1)'); // Blue
+        gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
+
+        const trafficChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [{
+                    label: 'RPS',
+                    data: Array(30).fill(0),
+                    borderColor: '#2563eb', // Standard Blue
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1f2937',
+                        padding: 10,
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 12 },
+                        cornerRadius: 4,
+                        displayColors: false,
+                        callbacks: {
+                            label: function (context) {
+                                return context.parsed.y.toFixed(1) + ' req/s';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { borderDash: [2, 4], color: '#f3f4f6', drawBorder: false },
+                        ticks: { padding: 10 }
+                    },
+                    x: {
+                        grid: { display: false, drawBorder: false }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
+            }
+        });
+
+        async function fetchStats() {
+            // Auth Check
+            const token = localStorage.getItem('gw_token');
+            if (!token) {
+                window.location.href = '/dashboard/login.html';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/stats', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (res.status === 401) {
+                    window.location.href = '/dashboard/login.html';
+                    return;
+                }
+
+                const data = await res.json();
+
+                // KPIs
+                document.getElementById('stat-total-req').innerText = data.global.total_requests_tracked.toLocaleString();
+                document.getElementById('stat-rps').innerText = data.global.total_rps.toFixed(1);
+                document.getElementById('stat-clients').innerText = data.global.active_clients;
+                document.getElementById('stat-risk').innerText = (data.global.avg_risk_score || 0).toFixed(2);
+
+                // Chart
+                trafficChart.data.datasets[0].data.push(data.global.total_rps);
+                trafficChart.data.datasets[0].data.shift();
+                trafficChart.update();
+
+                // Table
+                const tbody = document.getElementById('client-table-body');
+                tbody.innerHTML = '';
+                const clients = data.clients.sort((a, b) => b.rps - a.rps).slice(0, 10);
+
+                if (clients.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-sm text-gray-400">No active traffic</td></tr>';
+                }
+
+                clients.forEach(c => {
+                    const row = `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${c.client_id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">${c.rps.toFixed(1)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">${c.burstiness.toFixed(0)}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        // Config Handler
+        document.getElementById('configForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('targetUrl').value;
+            const token = localStorage.getItem('gw_token');
+            const msg = document.getElementById('targetMsg');
+
+            try {
+                const res = await fetch('/api/config/backend', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+                if (res.ok) {
+                    msg.innerText = "Updated successfully!";
+                    msg.classList.remove('hidden');
+                    msg.classList.add('text-green-600');
+                    setTimeout(() => msg.classList.add('hidden'), 3000);
+                } else {
+                    msg.innerText = "Update failed.";
+                    msg.classList.remove('hidden');
+                    msg.classList.add('text-red-500');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        });
+
+        // Set username in header
+        // Simple JWT parse or just fetch profile once
+        // For speed, just checking token existence implies access
+
+        setInterval(fetchStats, 1000);
+        fetchStats();
+    </script>
+</body>
+
+</html>

@@ -7,12 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Dependencies
 find_package(Drogon REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(nlohmann_json REQUIRED)
-
-# Optional: ONNX Runtime (Commented out until actually integrated)
-# find_package(OnnxRuntime) 
+find_package(nlohmann_json REQUIRED) 
 
 include_directories(include)
+include_directories(src)
 
 # Gather source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
@@ -25,7 +23,8 @@ target_link_libraries(ai_abuse_gateway PRIVATE
     Drogon::Drogon
     spdlog::spdlog
     nlohmann_json::nlohmann_json
-    # onnxruntime
+    crypto
+    ssl
 )
 
 # Copy config to build dir

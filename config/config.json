@@ -15,11 +15,14 @@
         }
     },
     "gateway": {
-        "backend_url": "http://example.com",
+        "backend_url": "http://httpbin.org",
         "backend_timeout_seconds": 10
     },
     "ml_model": {
         "path": "/models/abuse_detector.onnx",
-        "threshold": 0.8
+        "threshold_block": 0.8,
+        "threshold_throttle": 0.5,
+        "throttle_max_delay_ms": 3000,
+        "ban_duration_seconds": 300
     }
 }

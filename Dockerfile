@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
+    wget \
     libjsoncpp-dev \
     uuid-dev \
     openssl \
@@ -16,6 +17,15 @@ RUN apt-get update && apt-get install -y \
     libspdlog-dev \
     nlohmann-json3-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install ONNX Runtime (Optional but recommended for production ML)
+# Uncomment the following to enable full ONNX support:
+# RUN wget https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-x64-1.16.3.tgz && \
+#     tar -xzf onnxruntime-linux-x64-1.16.3.tgz && \
+#     cp -r onnxruntime-linux-x64-1.16.3/include/* /usr/local/include/ && \
+#     cp -r onnxruntime-linux-x64-1.16.3/lib/* /usr/local/lib/ && \
+#     ldconfig && \
+#     rm -rf onnxruntime-*
 
 # Install Drogon (Framework)
 WORKDIR /tmp
@@ -50,7 +60,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY --from=builder /app/build/ai_abuse_gateway /app/ai_abuse_gateway
-COPY --from=builder /app/config /app/config
+COPY --from=builder /app/config/config.json /app/config.json
+COPY --from=builder /app/dashboard /app/dashboard
 
 # Expose port
 EXPOSE 8080
