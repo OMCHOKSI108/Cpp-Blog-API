@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <string>
+#include <memory>
+#include <mutex>
 
 namespace ml {
 
@@ -18,7 +20,14 @@ public:
 private:
     InferenceEngine() = default;
     bool model_loaded_ = false;
-    // OnnxRuntime env/session variables would go here
+    std::mutex mutex_;
+    
+    // Model metadata
+    std::string model_path_;
+    size_t input_size_ = 2;  // Default: [rps, burstiness]
+    
+    // Fallback rule-based scoring when model not available
+    float ruleBasedScore(const std::vector<float>& features);
 };
 
 } // namespace ml
